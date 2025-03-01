@@ -3,12 +3,42 @@ import requests
 from loguru import logger
 from src.models.stock import StockInfo
 from src.models.errors import StockNotFoundError, StockAPIError
+import json 
 
 class FinancialDataService:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://www.alphavantage.co/query"
         logger.info("@rayjosong Initialized FinancialDataService")
+
+    async def get_current_price(self, ticker: str) -> float:
+        """Get the current price for a ticker using Alpha Vantage's GLOBAL_QUOTE endpoint"""
+        logger.debug(f"@rayjosong Fetching current price for {ticker}")
+        params = {
+            "function": "GLOBAL_QUOTE",
+            "symbol": ticker,
+            "apikey": self.api_key
+        }
+        
+        try:
+            logger.info(f"@rayjosong Making API request to Alpha Vantage for {ticker} current price")
+            response = requests.get(self.base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            logger.debug(f"@rayjosong Raw price API response for {ticker}: {json.dumps(data, indent=4)}")
+            
+            if "Global Quote" not in data or not data["Global Quote"]:
+                logger.error(f"@rayjosong No price data found for ticker {ticker}")
+                return 0.0
+                
+            price = float(data["Global Quote"].get("05. price", 0))
+            logger.info(f"@rayjosong Current price for {ticker}: {price}")
+            return price
+            
+        except Exception as e:
+            logger.error(f"@rayjosong Error fetching current price for {ticker}: {str(e)}")
+            return 0.0
 
     async def get_stock_info(self, ticker: str) -> StockInfo:
         logger.debug(f"@rayjosong Fetching data for {ticker}")
@@ -24,16 +54,19 @@ class FinancialDataService:
             response.raise_for_status()
             data = response.json()
             
-            logger.debug(f"@rayjosong Raw API response for {ticker}: {data}")
+            logger.debug(f"@rayjosong Raw API response for {ticker}: {json.dumps(data, indent=4)}")
             
             if "Name" not in data:
                 logger.error(f"@rayjosong No data found for ticker {ticker}")
                 raise StockNotFoundError(ticker)
             
+            # Get current price from separate API call
+            current_price = await self.get_current_price(ticker)
+            
             stock_info = StockInfo(
                 ticker=ticker,
                 name=data["Name"],
-                current_price=float(data.get("MarketPrice", 0)),
+                current_price=current_price,
                 currency="USD",
                 sector=data.get("Sector", "Unknown"),
                 industry=data.get("Industry", "Unknown")
