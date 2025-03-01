@@ -1,0 +1,2 @@
+mkdir -p src/services src/models logs
+touch .env 
