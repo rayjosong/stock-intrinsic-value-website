@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class Settings(BaseSettings):
-    alpha_vantage_api_key: str
+    alpha_vantage_api_key: str = "demo"
     log_level: str = "DEBUG"
 
     class Config:

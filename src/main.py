@@ -1,48 +1,52 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from loguru import logger
 import uvicorn
-from src.services.financial_data import FinancialDataService
-from src.services.dcf_calculator import DCFCalculator
-from src.config import get_settings, Settings
-from src.models.stock import StockInfo, IntrinsicValue
+from src.api.routes import router as api_router
+from src.api.error_handlers import setup_error_handlers
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
+from redis import asyncio as aioredis
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Stock Analysis API")
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="Moat Analyzer API",
+        description="API for financial data analysis",
+        version="1.0.0"
+    )
+    
+    # Setup logging
+    logger.add("logs/app.log", rotation="500 MB", level="DEBUG")
+    
+    # Include routers
+    app.include_router(api_router, prefix="/api")
+    
+    # Setup error handlers
+    setup_error_handlers(app)
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    @app.on_event("startup")
+    async def startup():
+        redis = aioredis.from_url("redis://localhost")
+        FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+    
+    @app.on_event("shutdown")
+    async def shutdown():
+        # Clean up resources here
+        pass
+    
+    return app
 
-logger.add("logs/app.log", rotation="500 MB", level="DEBUG")
-
-def get_financial_service(settings: Settings = Depends(get_settings)) -> FinancialDataService:
-    return FinancialDataService(settings.alpha_vantage_api_key)
-
-@app.get("/api/stock/{ticker}", response_model=StockInfo)
-async def get_stock_info(
-    ticker: str,
-    financial_service: FinancialDataService = Depends(get_financial_service)
-):
-    logger.info(f"@rayjosong Fetching stock info for {ticker}")
-    try:
-        return await financial_service.get_stock_info(ticker)
-    except Exception as e:
-        logger.error(f"@rayjosong Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/stock/{ticker}/intrinsic-value", response_model=IntrinsicValue)
-async def get_intrinsic_value(
-    ticker: str,
-    financial_service: FinancialDataService = Depends(get_financial_service)
-):
-    logger.info(f"@rayjosong Calculating intrinsic value for {ticker}")
-    try:
-        calculator = DCFCalculator()
-        stock_data = await financial_service.get_stock_info(ticker)
-        financial_metrics = await financial_service.get_financial_metrics(ticker)
-        
-        return await calculator.calculate_intrinsic_value(ticker, {
-            "fcf": financial_metrics["fcf"],
-            "current_price": stock_data.current_price
-        })
-    except Exception as e:
-        logger.error(f"@rayjosong Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+app = create_app()
 
 if __name__ == "__main__":
     logger.info("@rayjosong Starting Stock Analysis API")
