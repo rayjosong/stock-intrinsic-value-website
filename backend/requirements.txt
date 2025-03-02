@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+loguru
+pydantic
+pydantic-settings
+python-dotenv
+requests
+aiohttp
+yfinance
+redis
+fastapi-cache2
+pyyaml
+httpx

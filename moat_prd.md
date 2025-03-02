@@ -39,12 +39,26 @@
             "moat_strength": "Weak/Moderate/Strong",
             "moat_score": 1-10,
             "confidence_score": 1-10,
-            "explanation": {
-                "brand_power": "Explanation of brand power",
-                "network_effects": "Explanation of network effects",
-                "cost_advantages": "Explanation of cost advantages",
-                "efficient_scale": "Explanation of efficient scale",
-                "intangible_assets": "Explanation of intangible assets"
+            "moat_analysis": {
+                "brand_power": {
+                    "explanation": "Explanation of brand power",
+                    "score": 1-10,
+                } 
+                "network_effects": {
+                    "explanation": "Explanation of network effects",
+                    "score": 1-10,
+                },
+                "cost_advantages": {
+                    "explanation": "Explanation of cost advantages",
+                    "score": 1-10,
+                },
+                "efficient_scale": {
+                    "explanation": "Explanation of efficient scale",
+                    "score": 1-10,
+                },
+                "intangible_assets": {
+                    "explanation": "Explanation of intangible assets",
+                    "score": 1-10,
             }
             "data_sources": {
                 "company_name": "Source of company name",
